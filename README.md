@@ -1,5 +1,6 @@
 # Anki Addon 
-This addon is used to combine duplicate cards.
+This addon is used to combine duplicate cards.  
+**Note:** backup anki before try this addon!
 
 # Description
 This addon will find out the cards which have the same definition, then combine these cards' "Reference" field and copy the combined "Reference" field to one card, this card will be marked as "needVerify", other duplicate cards are marked as "needRemove".
