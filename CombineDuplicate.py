@@ -4,13 +4,53 @@ from aqt import mw
 from aqt.utils import showInfo
 # import all of the Qt GUI library
 from aqt.qt import *
+from aqt.utils import chooseList
+import json
 
-def CombineDuplicateDefinitionCards():
-    # get the number of cards in the current collection, which is stored in
-    # the main window
-    duplicateResult = mw.col.findDupes("Definition")
+def get_fields_name():
+    fields_name = set()
+    for row in mw.col.db.execute("select models from col"):
+        models = json.loads(row[0])
+        for model in models.values():
+            for f in  model["flds"]:
+                fields_name.add(f['name'])
+    return list(fields_name)
+
+def chooseField(prompt, choices):
+    parent = mw.app.activeWindow()
+    d = QDialog(parent)
+    d.setWindowModality(Qt.WindowModal)
+    l = QVBoxLayout()
+    d.setLayout(l)
+    t = QLabel(prompt)
+    l.addWidget(t)
+    c = QListWidget()
+    c.addItems(choices)
+    c.setCurrentRow(-1)
+    l.addWidget(c)
+    bb = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+    bb.accepted.connect(d.accept)
+    bb.rejected.connect(d.reject)
+    l.addWidget(bb)
+    if d.exec_():
+        return c.currentRow()
+    else:
+        return -1
+
+def CombineDuplicateDefinitionCards(self):
+    """ Combine cards have the same field """
+    field_name = ""
+    fields = get_fields_name()
+    fields_id = chooseField("Choose the field contain the duplicated content", fields)
+    if fields_id != -1:
+        field_name = fields[fields_id]
+    else:
+        return
+
+    duplicateResult = mw.col.findDupes(field_name)
 
     if not duplicateResult:
+        showInfo("No duplicate found")
         return
 
     tagRemovedCards = 0
