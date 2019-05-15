@@ -7,14 +7,16 @@ from aqt.qt import *
 from aqt.utils import chooseList
 import json
 
+
 def get_fields_name():
     fields_name = set()
     for row in mw.col.db.execute("select models from col"):
         models = json.loads(row[0])
         for model in models.values():
-            for f in  model["flds"]:
+            for f in model["flds"]:
                 fields_name.add(f['name'])
     return list(fields_name)
+
 
 def chooseField(prompt, choices):
     parent = mw.app.activeWindow()
@@ -37,11 +39,13 @@ def chooseField(prompt, choices):
     else:
         return -1
 
-def CombineDuplicateDefinitionCards(self):
-    """ Combine cards have the same field """
+
+def CopyScheduling(self):
+    """ Copy scheduling info of duplicate cards."""
     field_name = ""
     fields = get_fields_name()
-    fields_id = chooseField("Choose the field contain the duplicated content", fields)
+    fields_id = chooseField(
+        "Select the field that contains the duplicate content.", fields)
     if fields_id != -1:
         field_name = fields[fields_id]
     else:
@@ -50,32 +54,34 @@ def CombineDuplicateDefinitionCards(self):
     duplicateResult = mw.col.findDupes(field_name)
 
     if not duplicateResult:
-        showInfo("No duplicate found")
+        showInfo("No duplicates found.")
         return
 
-    tagRemovedCards = 0
     for s, nidlist in duplicateResult:
-        firstNoteId = nidlist[0]
-        removedNids = nidlist[1:]
-        tagRemovedCards += len(removedNids)
-        mw.col.tags.bulkAdd([firstNoteId], "needVerify")
-        mw.col.tags.bulkAdd(removedNids, "needRemove")
+        oldNoteId = nidlist[0]
+        newNoteId = nidlist[1]
+        oldCardId = mw.col.getNote(oldNoteId).cards()[0].id
+        newCardId = mw.col.getNote(newNoteId).cards()[0].id
+        oldCard = mw.col.getCard(oldCardId)
+        newCard = mw.col.getCard(newCardId)
+        newCard.due = oldCard.due
+        newCard.factor = oldCard.factor
+        newCard.ivl = oldCard.ivl
+        newCard.lapses = oldCard.lapses
+        newCard.left = oldCard.left
+        newCard.queue = oldCard.queue
+        newCard.reps = oldCard.reps
+        newCard.type = oldCard.type
+        newCard.flushSched()
+        mw.col.tags.bulkAdd([newNoteId], "needsVerify")
+        mw.col.tags.bulkAdd([oldNoteId], "needsRemove")
 
-        firstCardId = mw.col.findCards("nid:%d" % firstNoteId)[0]
-        firstCard = mw.col.getCard(firstCardId)
-        firstNote = firstCard.note() # Get first note
-        for removedId in removedNids:
-            removedCardId = mw.col.findCards("nid:%d" % removedId)[0]
-            removedCard = mw.col.getCard(removedCardId)
-            # Append the duplicate reference to first note
-            firstNote["Reference"] = firstNote["Reference"] + "<br><br>" + removedCard.note()["Reference"]
-            firstNote.flush()
+    showInfo("Done.")
 
-    showInfo("Done")
 
-# create a new menu item, "test"
-action = QAction("Combine duplicate cards", mw)
-# set it to call testFunction when it's clicked
-action.triggered.connect(CombineDuplicateDefinitionCards)
+# create a new menu item
+action = QAction("Copy scheduling info", mw)
+# set it to call the function when it's clicked
+action.triggered.connect(CopyScheduling)
 # and add it to the tools menu
 mw.form.menuTools.addAction(action)
